@@ -1,0 +1,1701 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FertiCore - Dashboard Análise de Dados</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Sortable.js for drag and drop -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <!-- Custom CSS -->
+    <style>
+        :root {
+            --primary-green: #7CB342;
+            --secondary-green: #8BC34A;
+            --dark-green: #689F38;
+            --light-green: #DCEDC8;
+            --accent-brown: #8D6E63;
+            --white: #FFFFFF;
+            --light-gray: #F5F5F5;
+            --medium-gray: #E0E0E0;
+            --dark-gray: #424242;
+            --dashboard-bg: #F8F9FA;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--dashboard-bg);
+            color: var(--dark-gray);
+        }
+
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 280px;
+            height: 100vh;
+            background: var(--white);
+            color: var(--dark-gray);
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 2px 0 15px rgba(0,0,0,0.1);
+            border-right: 1px solid var(--medium-gray);
+            transition: transform 0.3s ease;
+        }
+
+        .sidebar.hidden {
+            transform: translateX(-100%);
+        }
+
+        .sidebar-header {
+            padding: 25px 20px;
+            background: var(--white);
+            border-bottom: 2px solid var(--light-green);
+            text-align: center;
+        }
+
+        .logo-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo-image {
+            width: 140px;
+            height: auto;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+        }
+
+        .logo-subtitle {
+            font-size: 12px;
+            opacity: 0.9;
+            margin-top: 5px;
+            color: var(--black);
+        }
+
+        .sidebar-menu {
+            padding: 0;
+            list-style: none;
+            margin-top: 20px;
+        }
+
+        .sidebar-menu li {
+            border-bottom: 1px solid var(--medium-gray);
+        }
+
+        .sidebar-menu a {
+            display: block;
+            padding: 18px 25px;
+            color: var(--dark-gray);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+        }
+
+        .sidebar-menu a:hover,
+        .sidebar-menu a.active {
+            background: var(--light-green);
+            color: var(--dark-green);
+            border-left-color: var(--primary-green);
+            padding-left: 30px;
+        }
+
+        .sidebar-menu i {
+            width: 20px;
+            margin-right: 12px;
+            text-align: center;
+        }
+
+        .main-content {
+            margin-left: 280px;
+            padding: 0;
+            min-height: 100vh;
+            transition: margin-left 0.3s ease;
+            background: var(--dashboard-bg);
+        }
+
+        .main-content.sidebar-hidden {
+            margin-left: 0;
+        }
+
+        .dashboard-header {
+            background: var(--white);
+            padding: 20px 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            border-bottom: 1px solid var(--medium-gray);
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .page-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--dark-green);
+            margin: 0;
+            flex: 1;
+        }
+
+        .add-widget-btn {
+            background: var(--primary-green);
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            color: var(--white);
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(124, 179, 66, 0.3);
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            z-index: 9999;
+        }
+
+        .add-widget-btn:hover {
+            background: var(--dark-green);
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(124, 179, 66, 0.4);
+        }
+
+        .dashboard-grid {
+            padding: 30px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 25px;
+            min-height: calc(100vh - 100px);
+            position: relative; /* Required for absolute positioning of the button */
+        }
+
+        .empty-dashboard {
+            grid-column: 1 / -1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 80px 20px;
+            color: var(--medium-gray);
+        }
+
+        .empty-dashboard i {
+            font-size: 64px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .empty-dashboard h3 {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: var(--dark-gray);
+        }
+
+        .empty-dashboard p {
+            font-size: 16px;
+            margin-bottom: 30px;
+        }
+
+        .widget {
+            background: var(--white);
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            border: 1px solid var(--medium-gray);
+            transition: all 0.3s ease;
+            cursor: move;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .widget:hover {
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            transform: translateY(-2px);
+        }
+
+        .widget.dragging {
+            opacity: 0.5;
+            transform: rotate(5deg);
+        }
+
+        .widget-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--light-green);
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            background: var(--light-green);
+        }
+
+        .widget-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--dark-green);
+            margin: 0;
+            flex: 1;
+        }
+
+        .widget-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .widget-btn {
+            background: none;
+            border: none;
+            color: var(--dark-gray);
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+
+        .widget-btn:hover {
+            background: var(--white);
+            color: var(--primary-green);
+        }
+
+        .widget-content {
+            padding: 20px;
+            min-height: 300px;
+        }
+
+        .widget-chart {
+            position: relative;
+            height: 300px;
+        }
+
+        /* Modal Styles */
+        .modal-content {
+            border: none;
+            border-radius: 12px;
+        }
+
+        .modal-header {
+            background: var(--light-green);
+            border-bottom: 1px solid var(--primary-green);
+            border-radius: 12px 12px 0 0;
+        }
+
+        .modal-title {
+            color: var(--dark-green);
+            font-weight: 600;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            font-size: 13px;
+            color: var(--dark-gray);
+            margin-bottom: 8px;
+            display: block;
+            font-weight: 600;
+        }
+
+        .form-select, .form-control {
+            background: var(--white);
+            border: 2px solid var(--light-green);
+            color: var(--dark-gray);
+            font-size: 14px;
+            padding: 10px 15px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .form-select:focus, .form-control:focus {
+            background: var(--white);
+            border-color: var(--secondary-green);
+            box-shadow: 0 0 0 0.2rem rgba(124, 179, 66, 0.25);
+            outline: none;
+        }
+
+        .btn-primary {
+            background: var(--primary-green);
+            border-color: var(--primary-green);
+            padding: 12px 25px;
+            font-weight: 600;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            background: var(--dark-green);
+            border-color: var(--dark-green);
+            transform: translateY(-2px);
+        }
+
+        .toggle-sidebar {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 2000;
+            background: var(--white);
+            border: 2px solid var(--primary-green);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .toggle-sidebar:hover {
+            background: var(--primary-green);
+            color: var(--white);
+            transform: scale(1.1);
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                margin-left: 0;
+                padding: 0;
+            }
+
+            .sidebar {
+                transform: translateX(-100%);
+            }
+
+            .sidebar.active {
+                transform: translateX(0);
+            }
+
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+                padding: 15px;
+            }
+        }
+
+        /* Drag and drop visual feedback */
+        .sortable-ghost {
+            opacity: 0.4;
+        }
+
+        .sortable-chosen {
+            transform: scale(1.05);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        /* Summary Cards */
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .summary-card {
+            background: var(--white);
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            border-left: 4px solid var(--primary-green);
+            transition: all 0.3s ease;
+        }
+
+        .summary-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+
+        .summary-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .summary-card-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--dark-gray);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .summary-card-icon {
+            font-size: 24px;
+            color: var(--primary-green);
+        }
+
+        .summary-card-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--dark-green);
+            margin-bottom: 8px;
+        }
+
+        .summary-card-change {
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .summary-card-change.positive {
+            color: #4CAF50;
+        }
+
+        .summary-card-change.negative {
+            color: #F44336;
+        }
+
+        /* Data Table Widget */
+        .widget-table {
+            overflow-x: auto;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .data-table th {
+            background: var(--light-green);
+            color: var(--dark-green);
+            font-weight: 600;
+            padding: 12px 8px;
+            text-align: left;
+            border-bottom: 2px solid var(--primary-green);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .data-table td {
+            padding: 10px 8px;
+            border-bottom: 1px solid var(--medium-gray);
+        }
+
+        .data-table tbody tr:hover {
+            background: var(--light-green);
+        }
+
+        .data-table tbody tr:nth-child(even) {
+            background: rgba(124, 179, 66, 0.05);
+        }
+
+        /* Widget type specific styles */
+        .widget.summary {
+            grid-column: span 2;
+        }
+
+        .widget.table {
+            grid-column: span 2;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo-container">
+                <img src="/static/images/ferticore-logo-full.png" alt="FertiCore" class="logo-image">
+                <div class="logo-subtitle">Sistema de Visualização Agrícola</div>
+            </div>
+        </div>
+
+        <ul class="sidebar-menu">
+            <li>
+                <a href="/">
+                    <i class="fas fa-map"></i>
+                    Mapa Principal
+                </a>
+            </li>
+            <li>
+                <a href="/analysis" class="active">
+                    <i class="fas fa-chart-bar"></i>
+                    Análises
+                </a>
+            </li>
+            <li>
+                <a href="#">
+                    <i class="fas fa-download"></i>
+                    Exportações
+                </a>
+            </li>
+            <li>
+                <a href="#">
+                    <i class="fas fa-cog"></i>
+                    Configurações
+                </a>
+            </li>
+        </ul>
+    </div>
+
+    <!-- Toggle Sidebar Button -->
+    <button class="toggle-sidebar" id="toggle-sidebar">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- Main Content -->
+    <div class="main-content" id="main-content">
+        <!-- Dashboard Header -->
+        <div class="dashboard-header">
+            <h1 class="page-title">
+                <i class="fas fa-tachometer-alt me-3"></i>
+                Dashboard de Análises
+            </h1>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="summary-cards" id="summary-cards" style="display: none; padding: 30px 30px 0 30px;">
+            <div class="summary-card">
+                <div class="summary-card-header">
+                    <div class="summary-card-title">Widgets Ativos</div>
+                    <div class="summary-card-icon"><i class="fas fa-chart-bar"></i></div>
+                </div>
+                <div class="summary-card-value" id="total-widgets">0</div>
+                <div class="summary-card-change positive">+0 esta sessão</div>
+            </div>
+            
+            <div class="summary-card">
+                <div class="summary-card-header">
+                    <div class="summary-card-title">Culturas Analisadas</div>
+                    <div class="summary-card-icon"><i class="fas fa-leaf"></i></div>
+                </div>
+                <div class="summary-card-value" id="total-crops">0</div>
+                <div class="summary-card-change positive">Únicas</div>
+            </div>
+            
+            <div class="summary-card">
+                <div class="summary-card-header">
+                    <div class="summary-card-title">Hectares Totais</div>
+                    <div class="summary-card-icon"><i class="fas fa-map"></i></div>
+                </div>
+                <div class="summary-card-value" id="total-hectares-summary">0</div>
+                <div class="summary-card-change positive">Hectares analisados</div>
+            </div>
+            
+            <div class="summary-card">
+                <div class="summary-card-header">
+                    <div class="summary-card-title">Municípios</div>
+                    <div class="summary-card-icon"><i class="fas fa-city"></i></div>
+                </div>
+                <div class="summary-card-value" id="total-municipalities">0</div>
+                <div class="summary-card-change positive">Com dados</div>
+            </div>
+        </div>
+
+        <!-- Dashboard Grid -->
+        <div class="dashboard-grid" id="dashboard-grid">
+            <div class="empty-dashboard" id="empty-dashboard">
+                <i class="fas fa-chart-line"></i>
+                <h3>Seu Dashboard está vazio</h3>
+                <p>Clique no botão <strong>+</strong> para criar sua primeira análise</p>
+                <button class="btn btn-primary btn-lg" onclick="openCreateModal()">
+                    <i class="fas fa-plus me-2"></i>
+                    Criar Primeira Análise
+                </button>
+            </div>
+        </div>
+        
+        <!-- Fixed Add Widget Button -->
+        <button class="add-widget-btn" id="add-widget-btn" title="Adicionar Nova Análise">
+            <i class="fas fa-plus"></i>
+        </button>
+    </div>
+
+    <!-- Create Analysis Modal -->
+    <div class="modal fade" id="createAnalysisModal" tabindex="-1" aria-labelledby="createAnalysisModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="createAnalysisModalLabel">
+                        <i class="fas fa-chart-bar me-2"></i>
+                        Nova Análise
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="analysis-form">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label class="form-label">
+                                        <i class="fas fa-tag me-1"></i>
+                                        Nome da Análise
+                                    </label>
+                                    <input type="text" id="analysis-name" class="form-control" placeholder="Ex: Análise de Soja por Estado">
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">
+                                        <i class="fas fa-chart-pie me-1"></i>
+                                        Tipo de Gráfico
+                                    </label>
+                                    <select id="chart-type" class="form-select">
+                                        <option value="bar">Gráfico de Barras</option>
+                                        <option value="pie">Gráfico de Pizza</option>
+                                        <option value="line">Gráfico de Linha</option>
+                                        <option value="doughnut">Gráfico de Rosca</option>
+                                        <option value="horizontalBar">Barras Horizontais</option>
+                                        <option value="table">Tabela de Dados</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">
+                                        <i class="fas fa-database me-1"></i>
+                                        Fonte de Dados
+                                    </label>
+                                    <select id="data-source" class="form-select">
+                                        <option value="crops">Culturas Agrícolas</option>
+                                        <option value="municipalities">Dados Municipais</option>
+                                        <option value="states">Dados Estaduais</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group" id="crop-selection">
+                                    <label class="form-label">
+                                        <i class="fas fa-leaf me-1"></i>
+                                        Cultura
+                                    </label>
+                                    <select id="crop-select" class="form-select">
+                                        <option value="">Selecione uma cultura...</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+
+                                <div class="form-group">
+                                    <label class="form-label">
+                                        <i class="fas fa-filter me-1"></i>
+                                        Tipo de Análise
+                                    </label>
+                                    <select id="analysis-type" class="form-select">
+                                        <!-- Opções serão preenchidas dinamicamente baseadas no tipo de gráfico -->
+                                    </select>
+                                </div>
+
+                                <div class="form-group" id="trend-analysis">
+                                    <label class="form-label">
+                                        <i class="fas fa-trending-up me-1"></i>
+                                        Análise de Tendência
+                                    </label>
+                                    <select id="trend-type" class="form-select">
+                                        <option value="growth">Taxa de Crescimento</option>
+                                        <option value="seasonal">Análise Sazonal</option>
+                                        <option value="forecast">Projeção Linear</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group" id="statistical-analysis">
+                                    <label class="form-label">
+                                        <i class="fas fa-calculator me-1"></i>
+                                        Análise Estatística
+                                    </label>
+                                    <select id="stats-type" class="form-select">
+                                        <option value="correlation">Correlação</option>
+                                        <option value="percentile">Percentis</option>
+                                        <option value="outliers">Detecção de Outliers</option>
+                                        <option value="distribution">Distribuição</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">
+                                        <i class="fas fa-map-marked-alt me-1"></i>
+                                        Filtro por Estado (opcional)
+                                    </label>
+                                    <select id="state-filter" class="form-select">
+                                        <option value="">Todos os estados</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">
+                                        <i class="fas fa-sort-amount-down me-1"></i>
+                                        Limite de Registros
+                                    </label>
+                                    <select id="limit-records" class="form-select">
+                                        <option value="10">Top 10</option>
+                                        <option value="20">Top 20</option>
+                                        <option value="50">Top 50</option>
+                                        <option value="100">Top 100</option>
+                                        <option value="all">Todos</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label class="form-label">
+                                        <i class="fas fa-palette me-1"></i>
+                                        Esquema de Cores
+                                    </label>
+                                    <select id="color-scheme" class="form-select">
+                                        <option value="green">Verde</option>
+                                        <option value="blue">Azul</option>
+                                        <option value="orange">Laranja</option>
+                                        <option value="purple">Roxo</option>
+                                        <option value="rainbow">Multicolorido</option>
+                                        <option value="heatmap">Mapa de Calor</option>
+                                        <option value="gradient">Gradiente</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group" id="aggregation-controls">
+                                    <label class="form-label">
+                                        <i class="fas fa-layer-group me-1"></i>
+                                        Agregação
+                                    </label>
+                                    <select id="aggregation-type" class="form-select">
+                                        <option value="municipality">Por Município</option>
+                                        <option value="state">Por Estado</option>
+                                        <option value="region">Por Região</option>
+                                        <option value="macro-region">Por Macro-região</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group" id="comparison-controls">
+                                    <label class="form-label">
+                                        <i class="fas fa-balance-scale me-1"></i>
+                                        Comparação
+                                    </label>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="enable-comparison">
+                                        <label class="form-check-label" for="enable-comparison">
+                                            Habilitar Comparação entre Culturas
+                                        </label>
+                                    </div>
+                                    <select id="comparison-crop" class="form-select mt-2" style="display: none;">
+                                        <option value="">Selecione cultura para comparar...</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>
+                        Cancelar
+                    </button>
+                    <button type="button" class="btn btn-primary" id="create-widget-btn">
+                        <i class="fas fa-plus me-2"></i>
+                        Criar Widget
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        let widgets = [];
+        let nextWidgetId = 1;
+        let sortable = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadCrops();
+            loadStates();
+            setupEventListeners();
+            initializeDragAndDrop();
+            loadSavedWidgets();
+            updateDataSourceVisibility(); // Initial call to set visibility based on data source
+            updateAnalysisTypeOptions(); // Initial call to set analysis options
+        });
+
+        function setupEventListeners() {
+            // Sidebar toggle
+            document.getElementById('toggle-sidebar').addEventListener('click', function() {
+                const sidebar = document.getElementById('sidebar');
+                const mainContent = document.getElementById('main-content');
+                const toggleBtn = document.getElementById('toggle-sidebar');
+
+                sidebar.classList.toggle('hidden');
+                mainContent.classList.toggle('sidebar-hidden');
+
+                // Change icon
+                const icon = toggleBtn.querySelector('i');
+                if (sidebar.classList.contains('hidden')) {
+                    icon.className = 'fas fa-chevron-right';
+                } else {
+                    icon.className = 'fas fa-bars';
+                }
+            });
+
+            // Add widget button
+            document.getElementById('add-widget-btn').addEventListener('click', openCreateModal);
+
+            // Create widget button in modal
+            document.getElementById('create-widget-btn').addEventListener('click', createWidget);
+
+            // Data source change event
+            document.getElementById('data-source').addEventListener('change', updateDataSourceVisibility);
+
+            // Chart type change event
+            document.getElementById('chart-type').addEventListener('change', updateAnalysisTypeOptions);
+
+            // Comparison checkbox
+            document.getElementById('enable-comparison').addEventListener('change', toggleComparison);
+        }
+
+        function initializeDragAndDrop() {
+            const grid = document.getElementById('dashboard-grid');
+            sortable = Sortable.create(grid, {
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                chosenClass: 'sortable-chosen',
+                dragClass: 'dragging',
+                filter: '.empty-dashboard',
+                onEnd: function(evt) {
+                    // Update widget order in storage
+                    saveWidgetsOrder();
+                }
+            });
+        }
+
+        function openCreateModal() {
+            const modal = new bootstrap.Modal(document.getElementById('createAnalysisModal'));
+            modal.show();
+
+            // Reset form
+            document.getElementById('analysis-form').reset();
+            updateDataSourceVisibility();
+        }
+
+        async function loadCrops() {
+            try {
+                const response = await fetch('/api/crops');
+                const data = await response.json();
+
+                if (data.success) {
+                    const select = document.getElementById('crop-select');
+                    select.innerHTML = '<option value="">Selecione uma cultura...</option>';
+
+                    data.crops.forEach(crop => {
+                        const option = document.createElement('option');
+                        option.value = crop;
+                        option.textContent = crop;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Erro ao carregar culturas:', error);
+            }
+        }
+
+        async function loadStates() {
+            try {
+                const response = await fetch('/api/brazilian-states');
+                const data = await response.json();
+
+                if (data.success) {
+                    const select = document.getElementById('state-filter');
+                    select.innerHTML = '<option value="">Todos os estados</option>';
+
+                    data.states.forEach(state => {
+                        const option = document.createElement('option');
+                        option.value = state.code;
+                        option.textContent = `${state.name} (${state.code})`;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Erro ao carregar estados:', error);
+            }
+        }
+
+        async function createWidget() {
+            const analysisName = document.getElementById('analysis-name').value;
+            const chartType = document.getElementById('chart-type').value;
+            const dataSource = document.getElementById('data-source').value;
+            const crop = document.getElementById('crop-select').value;
+            const stateFilter = document.getElementById('state-filter').value;
+            const limit = document.getElementById('limit-records').value;
+            const colorScheme = document.getElementById('color-scheme').value;
+
+            if (!analysisName) {
+                alert('Por favor, preencha o nome da análise.');
+                return;
+            }
+
+            if (dataSource === 'crops' && !crop) {
+                alert('Por favor, selecione uma cultura.');
+                return;
+            }
+
+            try {
+                let response, data, analysisData = [];
+
+                if (dataSource === 'crops') {
+                    response = await fetch(`/api/crop-data/${encodeURIComponent(crop)}`);
+                    data = await response.json();
+
+                    if (data.success) {
+                        // Process data for crops
+                        Object.entries(data.data).forEach(([code, info]) => {
+                            if (stateFilter && info.state_code !== stateFilter) return;
+
+                            analysisData.push({
+                                municipality: info.municipality_name,
+                                state: info.state_code,
+                                value: info.harvested_area,
+                                label: `${info.municipality_name} (${info.state_code})`
+                            });
+                        });
+                    } else {
+                        alert('Erro ao carregar dados da cultura: ' + data.error);
+                        return;
+                    }
+                } else if (dataSource === 'municipalities') {
+                    // Fetch and process data for municipalities (example)
+                    // Replace with your actual API endpoint and data processing logic
+                    alert('Funcionalidade para dados municipais ainda não implementada.');
+                    return;
+                } else if (dataSource === 'states') {
+                    // Fetch and process data for states (example)
+                    // Replace with your actual API endpoint and data processing logic
+                    alert('Funcionalidade para dados estaduais ainda não implementada.');
+                    return;
+                }
+
+                // Apply analysis type
+                const analysisType = document.getElementById('analysis-type').value;
+                analysisData = processAnalysisType(analysisData, analysisType);
+
+                // Sort by value based on analysis type
+                if (analysisType === 'bottom') {
+                    analysisData.sort((a, b) => a.value - b.value);
+                } else {
+                    analysisData.sort((a, b) => b.value - a.value);
+                }
+
+                // Apply limit
+                if (limit !== 'all') {
+                    analysisData = analysisData.slice(0, parseInt(limit));
+                }
+
+                const widget = {
+                    id: nextWidgetId++,
+                    name: analysisName,
+                    chartType: chartType,
+                    dataSource: dataSource,
+                    crop: crop,
+                    stateFilter: stateFilter,
+                    limit: limit,
+                    colorScheme: colorScheme,
+                    data: analysisData,
+                    createdAt: new Date().toISOString()
+                };
+
+                widgets.push(widget);
+                renderWidget(widget);
+                updateEmptyState();
+                saveWidgets();
+
+                // Close modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('createAnalysisModal'));
+                modal.hide();
+
+            } catch (error) {
+                console.error('Erro ao criar widget:', error);
+                alert('Erro ao criar widget');
+            }
+        }
+
+        function renderWidget(widget) {
+            const grid = document.getElementById('dashboard-grid');
+
+            const widgetElement = document.createElement('div');
+            widgetElement.className = `widget ${widget.chartType === 'table' ? 'table' : ''}`;
+            widgetElement.dataset.widgetId = widget.id;
+
+            let contentHTML;
+            if (widget.chartType === 'table') {
+                contentHTML = `
+                    <div class="widget-content">
+                        <div class="widget-table">
+                            <table class="data-table" id="widget-table-${widget.id}">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Município</th>
+                                        <th>Estado</th>
+                                        <th>Hectares</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            } else {
+                contentHTML = `
+                    <div class="widget-content">
+                        <div class="widget-chart">
+                            <canvas id="widget-chart-${widget.id}"></canvas>
+                        </div>
+                    </div>
+                `;
+            }
+
+            widgetElement.innerHTML = `
+                <div class="widget-header">
+                    <h6 class="widget-title">${widget.name}</h6>
+                    <div class="widget-actions">
+                        <button class="widget-btn" onclick="editWidget(${widget.id})" title="Editar">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="widget-btn" onclick="downloadWidget(${widget.id})" title="Download">
+                            <i class="fas fa-download"></i>
+                        </button>
+                        <button class="widget-btn" onclick="duplicateWidget(${widget.id})" title="Duplicar">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                        <button class="widget-btn" onclick="deleteWidget(${widget.id})" title="Excluir">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                ${contentHTML}
+            `;
+
+            grid.appendChild(widgetElement);
+
+            // Create chart or populate table
+            setTimeout(() => {
+                if (widget.chartType === 'table') {
+                    createWidgetTable(widget);
+                } else {
+                    createWidgetChart(widget);
+                }
+            }, 100);
+        }
+
+        function createWidgetChart(widget) {
+            const ctx = document.getElementById(`widget-chart-${widget.id}`).getContext('2d');
+            const colors = getColorScheme(widget.colorScheme, widget.data.length);
+
+            const config = {
+                type: widget.chartType,
+                data: {
+                    labels: widget.data.map(item => item.label),
+                    datasets: [{
+                        label: 'Hectares Colhidos',
+                        data: widget.data.map(item => item.value),
+                        backgroundColor: colors,
+                        borderColor: colors.map(color => color.replace('0.8', '1')),
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: false
+                        },
+                        legend: {
+                            display: widget.chartType === 'pie' || widget.chartType === 'doughnut',
+                            position: 'bottom',
+                            labels: {
+                                boxWidth: 12,
+                                font: {
+                                    size: 10
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.parsed;
+                                    const formattedValue = (typeof value === 'number' ? value : value.y || 0)
+                                        .toLocaleString('pt-BR');
+                                    return `${context.label}: ${formattedValue} hectares`;
+                                }
+                            }
+                        }
+                    },
+                    scales: widget.chartType === 'pie' || widget.chartType === 'doughnut' ? {} : {
+                        x: {
+                            display: widget.chartType !== 'horizontalBar',
+                            ticks: {
+                                maxTicksLimit: 8,
+                                font: {
+                                    size: 9
+                                }
+                            }
+                        },
+                        y: {
+                            display: true,
+                            beginAtZero: true,
+                            ticks: {
+                                font: {
+                                    size: 9
+                                },
+                                callback: function(value) {
+                                    return value.toLocaleString('pt-BR');
+                                }
+                            }
+                        }
+                    },
+                    indexAxis: widget.chartType === 'horizontalBar' ? 'y' : 'x'
+                }
+            };
+
+            new Chart(ctx, config);
+        }
+
+        function getColorScheme(scheme, count) {
+            const schemes = {
+                green: ['rgba(124, 179, 66, 0.8)', 'rgba(139, 195, 74, 0.8)', 'rgba(104, 159, 56, 0.8)', 'rgba(220, 237, 200, 0.8)'],
+                blue: ['rgba(33, 150, 243, 0.8)', 'rgba(30, 136, 229, 0.8)', 'rgba(25, 118, 210, 0.8)', 'rgba(187, 222, 251, 0.8)'],
+                orange: ['rgba(255, 152, 0, 0.8)', 'rgba(255, 167, 38, 0.8)', 'rgba(251, 140, 0, 0.8)', 'rgba(255, 224, 178, 0.8)'],
+                purple: ['rgba(156, 39, 176, 0.8)', 'rgba(142, 36, 170, 0.8)', 'rgba(123, 31, 162, 0.8)', 'rgba(225, 190, 231, 0.8)'],
+                rainbow: ['rgba(244, 67, 54, 0.8)', 'rgba(255, 152, 0, 0.8)', 'rgba(255, 235, 59, 0.8)', 'rgba(76, 175, 80, 0.8)', 'rgba(33, 150, 243, 0.8)', 'rgba(156, 39, 176, 0.8)']
+            };
+
+            // Novos esquemas
+            if (scheme === 'heatmap') {
+                return generateHeatmapColors(count);
+            } else if (scheme === 'gradient') {
+                return generateGradientColors(count);
+            }
+
+            const baseColors = schemes[scheme] || schemes.green;
+            const colors = [];
+
+            for (let i = 0; i < count; i++) {
+                colors.push(baseColors[i % baseColors.length]);
+            }
+
+            return colors;
+        }
+
+        function generateHeatmapColors(count) {
+            const colors = [];
+            for (let i = 0; i < count; i++) {
+                const intensity = i / (count - 1);
+                const red = Math.floor(255 * intensity);
+                const green = Math.floor(255 * (1 - intensity));
+                const blue = 0;
+                colors.push(`rgba(${red}, ${green}, ${blue}, 0.8)`);
+            }
+            return colors;
+        }
+
+        function generateGradientColors(count) {
+            const colors = [];
+            for (let i = 0; i < count; i++) {
+                const hue = (i / count) * 360;
+                colors.push(`hsla(${hue}, 70%, 50%, 0.8)`);
+            }
+            return colors;
+        }
+
+        function createWidgetTable(widget) {
+            const tableBody = document.querySelector(`#widget-table-${widget.id} tbody`);
+            tableBody.innerHTML = '';
+
+            widget.data.forEach((item, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${item.municipality}</td>
+                    <td>${item.state}</td>
+                    <td>${item.value.toLocaleString('pt-BR')} ha</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        function updateEmptyState() {
+            const emptyDashboard = document.getElementById('empty-dashboard');
+            const summaryCards = document.getElementById('summary-cards');
+            
+            if (widgets.length === 0) {
+                emptyDashboard.style.display = 'flex';
+                summaryCards.style.display = 'none';
+            } else {
+                emptyDashboard.style.display = 'none';
+                summaryCards.style.display = 'grid';
+                updateSummaryCards();
+            }
+        }
+
+        function updateSummaryCards() {
+            const uniqueCrops = new Set(widgets.map(w => w.crop));
+            let totalHectares = 0;
+            let totalMunicipalities = 0;
+
+            widgets.forEach(widget => {
+                if (widget.data) {
+                    widget.data.forEach(item => {
+                        totalHectares += item.value;
+                    });
+                    totalMunicipalities += widget.data.length;
+                }
+            });
+
+            document.getElementById('total-widgets').textContent = widgets.length;
+            document.getElementById('total-crops').textContent = uniqueCrops.size;
+            document.getElementById('total-municipalities').textContent = totalMunicipalities.toLocaleString('pt-BR');
+            
+            // Format hectares
+            if (totalHectares >= 1000000) {
+                document.getElementById('total-hectares-summary').textContent = 
+                    (totalHectares / 1000000).toLocaleString('pt-BR', {maximumFractionDigits: 1}) + 'M';
+            } else if (totalHectares >= 1000) {
+                document.getElementById('total-hectares-summary').textContent = 
+                    (totalHectares / 1000).toLocaleString('pt-BR', {maximumFractionDigits: 1}) + 'K';
+            } else {
+                document.getElementById('total-hectares-summary').textContent = 
+                    totalHectares.toLocaleString('pt-BR');
+            }
+        }
+
+        function deleteWidget(widgetId) {
+            if (confirm('Tem certeza que deseja excluir este widget?')) {
+                widgets = widgets.filter(w => w.id !== widgetId);
+                const widgetElement = document.querySelector(`[data-widget-id="${widgetId}"]`);
+                if (widgetElement) {
+                    widgetElement.remove();
+                }
+                updateEmptyState();
+                saveWidgets();
+            }
+        }
+
+        function duplicateWidget(widgetId) {
+            const widget = widgets.find(w => w.id === widgetId);
+            if (widget) {
+                const newWidget = {
+                    ...widget,
+                    id: nextWidgetId++,
+                    name: `${widget.name} (Cópia)`,
+                    createdAt: new Date().toISOString()
+                };
+                widgets.push(newWidget);
+                renderWidget(newWidget);
+                saveWidgets();
+            }
+        }
+
+        function downloadWidget(widgetId) {
+            const widget = widgets.find(w => w.id === widgetId);
+            if (!widget) return;
+
+            if (widget.chartType === 'table') {
+                // Download table as CSV
+                const csvContent = "data:text/csv;charset=utf-8," + 
+                    "Posição,Município,Estado,Hectares\n" +
+                    widget.data.map((item, index) => 
+                        `${index + 1},"${item.municipality}","${item.state}",${item.value}`
+                    ).join("\n");
+                
+                const link = document.createElement('a');
+                link.download = `${widget.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.csv`;
+                link.href = encodeURI(csvContent);
+                link.click();
+            } else {
+                // Download chart as PNG
+                const canvas = document.getElementById(`widget-chart-${widgetId}`);
+                if (canvas) {
+                    const link = document.createElement('a');
+                    link.download = `${widget.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.png`;
+                    link.href = canvas.toDataURL();
+                    link.click();
+                }
+            }
+        }
+
+        function editWidget(widgetId) {
+            const widget = widgets.find(w => w.id === widgetId);
+            if (widget) {
+                // Populate modal with widget data
+                document.getElementById('analysis-name').value = widget.name;
+                document.getElementById('chart-type').value = widget.chartType;
+                document.getElementById('data-source').value = widget.dataSource;
+                document.getElementById('crop-select').value = widget.crop;
+                document.getElementById('state-filter').value = widget.stateFilter;
+                document.getElementById('limit-records').value = widget.limit;
+                document.getElementById('color-scheme').value = widget.colorScheme;
+
+                // Open modal
+                openCreateModal();
+
+                // Change create button to update button
+                const createButton = document.getElementById('create-widget-btn');
+                createButton.innerHTML = '<i class="fas fa-save me-2"></i>Salvar Alterações';
+                createButton.removeEventListener('click', createWidget);
+                createButton.addEventListener('click', function() {
+                    updateWidget(widgetId);
+                });
+            }
+        }
+
+        async function updateWidget(widgetId) {
+            const analysisName = document.getElementById('analysis-name').value;
+            const chartType = document.getElementById('chart-type').value;
+            const dataSource = document.getElementById('data-source').value;
+            const crop = document.getElementById('crop-select').value;
+            const stateFilter = document.getElementById('state-filter').value;
+            const limit = document.getElementById('limit-records').value;
+            const colorScheme = document.getElementById('color-scheme').value;
+
+            if (!analysisName) {
+                alert('Por favor, preencha o nome da análise.');
+                return;
+            }
+
+            if (dataSource === 'crops' && !crop) {
+                alert('Por favor, selecione uma cultura.');
+                return;
+            }
+
+            try {
+                let response, data, analysisData = [];
+
+                if (dataSource === 'crops') {
+                    response = await fetch(`/api/crop-data/${encodeURIComponent(crop)}`);
+                    data = await response.json();
+
+                    if (data.success) {
+                        // Process data for crops
+                        Object.entries(data.data).forEach(([code, info]) => {
+                            if (stateFilter && info.state_code !== stateFilter) return;
+
+                            analysisData.push({
+                                municipality: info.municipality_name,
+                                state: info.state_code,
+                                value: info.harvested_area,
+                                label: `${info.municipality_name} (${info.state_code})`
+                            });
+                        });
+                    } else {
+                        alert('Erro ao carregar dados da cultura: ' + data.error);
+                        return;
+                    }
+                } else if (dataSource === 'municipalities') {
+                    // Fetch and process data for municipalities (example)
+                    // Replace with your actual API endpoint and data processing logic
+                    alert('Funcionalidade para dados municipais ainda não implementada.');
+                    return;
+                } else if (dataSource === 'states') {
+                    // Fetch and process data for states (example)
+                    // Replace with your actual API endpoint and data processing logic
+                    alert('Funcionalidade para dados estaduais ainda não implementada.');
+                    return;
+                }
+
+                // Apply analysis type
+                const analysisType = document.getElementById('analysis-type').value;
+                analysisData = processAnalysisType(analysisData, analysisType);
+
+                // Sort by value based on analysis type
+                if (analysisType === 'bottom') {
+                    analysisData.sort((a, b) => a.value - b.value);
+                } else {
+                    analysisData.sort((a, b) => b.value - a.value);
+                }
+
+                // Apply limit
+                if (limit !== 'all') {
+                    analysisData = analysisData.slice(0, parseInt(limit));
+                }
+
+                // Update widget
+                const widgetIndex = widgets.findIndex(w => w.id === widgetId);
+                if (widgetIndex !== -1) {
+                    widgets[widgetIndex] = {
+                        ...widgets[widgetIndex],
+                        name: analysisName,
+                        chartType: chartType,
+                        dataSource: dataSource,
+                        crop: crop,
+                        stateFilter: stateFilter,
+                        limit: limit,
+                        colorScheme: colorScheme,
+                        data: analysisData
+                    };
+
+                    // Re-render widget
+                    const grid = document.getElementById('dashboard-grid');
+                    const widgetElement = document.querySelector(`[data-widget-id="${widgetId}"]`);
+                    grid.removeChild(widgetElement);
+
+                    renderWidget(widgets[widgetIndex]);
+                    saveWidgets();
+
+                    // Close modal and reset button
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('createAnalysisModal'));
+                    modal.hide();
+
+                    const createButton = document.getElementById('create-widget-btn');
+                    createButton.innerHTML = '<i class="fas fa-plus me-2"></i>Criar Widget';
+                    createButton.removeEventListener('click', arguments.callee);
+                    createButton.addEventListener('click', createWidget);
+                }
+
+            } catch (error) {
+                console.error('Erro ao atualizar widget:', error);
+                alert('Erro ao atualizar widget');
+            }
+        }
+
+        function saveWidgets() {
+            localStorage.setItem('ferticore_dashboard_widgets', JSON.stringify(widgets));
+        }
+
+        function saveWidgetsOrder() {
+            const grid = document.getElementById('dashboard-grid');
+            const widgetElements = grid.querySelectorAll('.widget');
+            const orderedIds = Array.from(widgetElements).map(el => parseInt(el.dataset.widgetId));
+
+            const orderedWidgets = [];
+            orderedIds.forEach(id => {
+                const widget = widgets.find(w => w.id === id);
+                if (widget) orderedWidgets.push(widget);
+            });
+
+            widgets = orderedWidgets;
+            saveWidgets();
+        }
+
+        function loadSavedWidgets() {
+            const saved = localStorage.getItem('ferticore_dashboard_widgets');
+            if (saved) {
+                widgets = JSON.parse(saved);
+                nextWidgetId = Math.max(...widgets.map(w => w.id), 0) + 1;
+
+                widgets.forEach(widget => {
+                    renderWidget(widget);
+                });
+            }
+            updateEmptyState();
+        }
+
+        function updateDataSourceVisibility() {
+            const dataSource = document.getElementById('data-source').value;
+            const cropSelection = document.getElementById('crop-selection');
+
+            if (dataSource === 'crops') {
+                cropSelection.style.display = 'block';
+            } else {
+                cropSelection.style.display = 'none';
+            }
+        }
+
+        function updateAnalysisTypeOptions() {
+            const chartType = document.getElementById('chart-type').value;
+            const analysisTypeSelect = document.getElementById('analysis-type');
+            const trendAnalysis = document.getElementById('trend-analysis');
+            const statisticalAnalysis = document.getElementById('statistical-analysis');
+            const aggregationControls = document.getElementById('aggregation-controls');
+            
+            // Limpar opções atuais
+            analysisTypeSelect.innerHTML = '';
+            
+            // Configurar visibilidade dos controles avançados
+            trendAnalysis.style.display = 'none';
+            statisticalAnalysis.style.display = 'none';
+            aggregationControls.style.display = 'block';
+            
+            let options = [];
+            
+            switch(chartType) {
+                case 'bar':
+                case 'horizontalBar':
+                    options = [
+                        {value: 'top', text: 'Maiores Valores (Top)'},
+                        {value: 'bottom', text: 'Menores Valores (Bottom)'},
+                        {value: 'ranking', text: 'Ranking Completo'},
+                        {value: 'comparative', text: 'Análise Comparativa'},
+                        {value: 'density', text: 'Densidade de Produção'},
+                        {value: 'concentration', text: 'Concentração Regional'}
+                    ];
+                    statisticalAnalysis.style.display = 'block';
+                    break;
+                    
+                case 'pie':
+                case 'doughnut':
+                    options = [
+                        {value: 'participation', text: 'Participação Percentual'},
+                        {value: 'concentration', text: 'Concentração de Mercado'},
+                        {value: 'pareto', text: 'Análise de Pareto (80/20)'},
+                        {value: 'market-share', text: 'Market Share'},
+                        {value: 'dominance', text: 'Dominância Regional'}
+                    ];
+                    break;
+                    
+                case 'line':
+                    options = [
+                        {value: 'evolution', text: 'Evolução Temporal'},
+                        {value: 'trend', text: 'Análise de Tendência'},
+                        {value: 'seasonality', text: 'Sazonalidade'},
+                        {value: 'volatility', text: 'Volatilidade'},
+                        {value: 'cycle', text: 'Análise de Ciclos'}
+                    ];
+                    trendAnalysis.style.display = 'block';
+                    statisticalAnalysis.style.display = 'block';
+                    break;
+                    
+                case 'table':
+                    options = [
+                        {value: 'detailed', text: 'Relatório Detalhado'},
+                        {value: 'summary', text: 'Resumo Estatístico'},
+                        {value: 'cross-analysis', text: 'Análise Cruzada'},
+                        {value: 'drill-down', text: 'Drill-down Hierárquico'},
+                        {value: 'benchmarking', text: 'Benchmarking'},
+                        {value: 'performance', text: 'Índices de Performance'}
+                    ];
+                    statisticalAnalysis.style.display = 'block';
+                    break;
+                    
+                default:
+                    options = [
+                        {value: 'basic', text: 'Análise Básica'},
+                        {value: 'advanced', text: 'Análise Avançada'}
+                    ];
+            }
+            
+            // Adicionar opções ao select
+            options.forEach(option => {
+                const optionElement = document.createElement('option');
+                optionElement.value = option.value;
+                optionElement.textContent = option.text;
+                analysisTypeSelect.appendChild(optionElement);
+            });
+        }
+
+        function toggleComparison() {
+            const isEnabled = document.getElementById('enable-comparison').checked;
+            const comparisonCrop = document.getElementById('comparison-crop');
+            
+            if (isEnabled) {
+                comparisonCrop.style.display = 'block';
+                loadCropsForComparison();
+            } else {
+                comparisonCrop.style.display = 'none';
+            }
+        }
+
+        async function loadCropsForComparison() {
+            try {
+                const response = await fetch('/api/crops');
+                const data = await response.json();
+
+                if (data.success) {
+                    const select = document.getElementById('comparison-crop');
+                    select.innerHTML = '<option value="">Selecione cultura para comparar...</option>';
+
+                    data.crops.forEach(crop => {
+                        const option = document.createElement('option');
+                        option.value = crop;
+                        option.textContent = crop;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Erro ao carregar culturas para comparação:', error);
+            }
+        }
+
+        function processAnalysisType(data, type) {
+            const sortedData = [...data].sort((a, b) => b.value - a.value);
+            
+            switch (type) {
+                case 'top':
+                case 'ranking':
+                    return sortedData;
+                    
+                case 'bottom':
+                    return [...data].sort((a, b) => a.value - b.value);
+                    
+                case 'participation':
+                    const total = data.reduce((acc, item) => acc + item.value, 0);
+                    return data.map(item => ({
+                        ...item,
+                        value: (item.value / total) * 100,
+                        originalValue: item.value
+                    }));
+                    
+                case 'concentration':
+                    const totalConc = data.reduce((acc, item) => acc + item.value, 0);
+                    let accumulator = 0;
+                    return sortedData.map(item => {
+                        accumulator += item.value;
+                        return {
+                            ...item,
+                            value: (accumulator / totalConc) * 100,
+                            originalValue: item.value
+                        };
+                    });
+                    
+                case 'pareto':
+                    const totalPareto = data.reduce((acc, item) => acc + item.value, 0);
+                    let cumulativePercent = 0;
+                    return sortedData.map(item => {
+                        const percent = (item.value / totalPareto) * 100;
+                        cumulativePercent += percent;
+                        return {
+                            ...item,
+                            value: percent,
+                            cumulative: cumulativePercent,
+                            originalValue: item.value
+                        };
+                    });
+                    
+                case 'density':
+                    // Densidade por km² (assumindo área média por município)
+                    const avgArea = 500; // km² médio por município (estimativa)
+                    return data.map(item => ({
+                        ...item,
+                        value: item.value / avgArea,
+                        originalValue: item.value
+                    }));
+                    
+                case 'benchmarking':
+                    const avgValue = data.reduce((acc, item) => acc + item.value, 0) / data.length;
+                    return data.map(item => ({
+                        ...item,
+                        value: (item.value / avgValue) * 100, // Índice base 100
+                        originalValue: item.value,
+                        benchmark: avgValue
+                    }));
+                    
+                case 'performance':
+                    const maxValue = Math.max(...data.map(item => item.value));
+                    return data.map(item => ({
+                        ...item,
+                        value: (item.value / maxValue) * 100, // Performance relativa
+                        originalValue: item.value,
+                        maxValue: maxValue
+                    }));
+                    
+                case 'market-share':
+                    const totalMarket = data.reduce((acc, item) => acc + item.value, 0);
+                    return data.map(item => ({
+                        ...item,
+                        value: (item.value / totalMarket) * 100,
+                        originalValue: item.value
+                    }));
+                    
+                case 'detailed':
+                case 'summary':
+                case 'cross-analysis':
+                case 'drill-down':
+                default:
+                    return data;
+            }
+        }
+    </script>
+</body>
+</html>

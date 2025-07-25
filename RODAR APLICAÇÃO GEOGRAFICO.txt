@@ -1,0 +1,5 @@
+RODAR APLICAÇÃO GEOGRAFICO
+
+pip install flask flask-sqlalchemy gunicorn werkzeug pandas openpyxl psycopg2-binary sqlalchemy email-validator
+
+python main.py

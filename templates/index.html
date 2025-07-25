@@ -1,0 +1,1848 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FertiCore - Sistema de Visualização Agrícola</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <!-- Custom CSS -->
+    <style>
+        :root {
+            --primary-green: #7CB342;
+            --secondary-green: #8BC34A;
+            --dark-green: #689F38;
+            --light-green: #DCEDC8;
+            --accent-brown: #8D6E63;
+            --white: #FFFFFF;
+            --light-gray: #F5F5F5;
+            --medium-gray: #E0E0E0;
+            --dark-gray: #424242;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--light-gray);
+            color: var(--dark-gray);
+        }
+
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 280px;
+            height: 100vh;
+            background: var(--white);
+            color: var(--dark-gray);
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 2px 0 15px rgba(0,0,0,0.1);
+            border-right: 1px solid var(--medium-gray);
+        }
+
+        .sidebar-header {
+            padding: 25px 20px;
+            background: var(--white);
+            border-bottom: 2px solid var(--light-green);
+            text-align: center;
+        }
+
+        .logo-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo-image {
+            width: 140px;
+            height: auto;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+        }
+
+        .logo-text {
+            font-size: 24px;
+            font-weight: 700;
+            margin: 0;
+            color: var(--white);
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .logo-subtitle {
+            font-size: 12px;
+            opacity: 0.9;
+            margin-top: 5px;
+            color: var(--black);
+        }
+
+        .sidebar-menu {
+            padding: 0;
+            list-style: none;
+            margin-top: 20px;
+        }
+
+        .sidebar-menu li {
+            border-bottom: 1px solid var(--medium-gray);
+        }
+
+        .sidebar-menu a {
+            display: block;
+            padding: 18px 25px;
+            color: var(--dark-gray);
+            text-decoration: none;
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+        }
+
+        .sidebar-menu a:hover,
+        .sidebar-menu a.active {
+            background: var(--light-green);
+            color: var(--dark-green);
+            border-left-color: var(--primary-green);
+            padding-left: 30px;
+        }
+
+        .sidebar-menu i {
+            width: 20px;
+            margin-right: 12px;
+            text-align: center;
+        }
+
+        .layers-section {
+            padding: 25px 20px;
+            border-top: 2px solid var(--light-green);
+            background: var(--white);
+        }
+
+        .layers-title {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: var(--dark-green);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-label {
+            font-size: 13px;
+            color: var(--dark-gray);
+            margin-bottom: 8px;
+            display: block;
+            font-weight: 500;
+        }
+
+        .form-select {
+            background: var(--white);
+            border: 2px solid var(--light-green);
+            color: var(--dark-gray);
+            font-size: 14px;
+            padding: 10px 15px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .form-select:focus {
+            background: var(--white);
+            border-color: var(--secondary-green);
+            box-shadow: 0 0 0 0.2rem rgba(124, 179, 66, 0.25);
+            outline: none;
+        }
+
+        .form-select option {
+            background: var(--white);
+            color: var(--dark-gray);
+        }
+
+        .main-content {
+            margin-left: 280px;
+            height: 100vh;
+            position: relative;
+            transition: margin-left 0.3s ease;
+        }
+
+        .main-content.sidebar-hidden {
+            margin-left: 0;
+        }
+
+        .sidebar.hidden {
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+        }
+
+        .toggle-sidebar {
+            position: fixed;
+            top: 20px;
+            right: 20px; /* Changed from left to right */
+            z-index: 2000;
+            background: var(--white);
+            border: 2px solid var(--primary-green);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .toggle-sidebar:hover {
+            background: var(--primary-green);
+            color: var(--white);
+            transform: scale(1.1);
+        }
+
+        .toggle-sidebar.sidebar-hidden {
+            left: 20px;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+            border-radius: 0;
+        }
+
+        .map-legend {
+            background: var(--white);
+            border-radius: 10px;
+            padding: 18px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            max-width: 280px;
+            font-size: 13px;
+            border: 2px solid var(--primary-green);
+        }
+
+        .map-legend h6 {
+            margin-bottom: 12px;
+            color: var(--dark-green);
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+            border: 1px solid var(--medium-gray);
+            border-radius: 4px;
+        }
+
+        .stats-section {
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 2px solid var(--light-green);
+        }
+
+        .stat-card {
+            background: var(--light-green);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            border-left: 4px solid var(--primary-green);
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            background: var(--secondary-green);
+            transform: translateY(-2px);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--dark-green);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-value {
+            font-size: 22px;
+            font-weight: bold;
+            color: var(--dark-green);
+            margin-top: 5px;
+        }
+
+        /* Grayscale map tiles */
+        .grayscale-tiles {
+            filter: grayscale(100%) contrast(1.1) brightness(1.0) sepia(0.1);
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                height: auto;
+                position: relative;
+            }
+
+            .main-content {
+                margin-left: 0;
+                height: calc(100vh - 400px);
+            }
+
+            .toggle-sidebar {
+                top: 10px;
+                left: 10px;
+                width: 40px;
+                height: 40px;
+            }
+        }
+
+        /* Custom Scrollbar */
+        .sidebar::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .sidebar::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.3);
+            border-radius: 4px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb:hover {
+            background: rgba(255,255,255,0.5);
+        }
+
+        /* Camadas */
+        .layers-subtitle {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--dark-green);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .layer-item {
+            background: var(--light-green);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+            border-left: 4px solid var(--primary-green);
+            transition: all 0.3s ease;
+        }
+
+        .layer-item:hover {
+            background: var(--secondary-green);
+            transform: translateY(-1px);
+        }
+
+        .layer-item-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .layer-item-name {
+            font-weight: 600;
+            font-size: 13px;
+            color: var(--dark-green);
+        }
+
+        .layer-item-type {
+            font-size: 11px;
+            color: var(--dark-gray);
+            opacity: 0.8;
+        }
+
+        .layer-controls {
+            display: flex;
+            gap: 5px;
+        }
+
+        .layer-controls .btn {
+            padding: 2px 6px;
+            font-size: 10px;
+        }
+
+        /* Modal customizations */
+        .modal-content {
+            border-radius: 12px;
+            border: none;
+        }
+
+        .modal-header {
+            border-top-left-radius: 12px;
+            border-top-right-radius: 12px;
+        }
+
+        .modal-footer {
+            border-bottom-left-radius: 12px;
+            border-bottom-right-radius: 12px;
+        }
+
+        /* Analytics Card */
+        .analytics-card {
+            position: absolute;
+            background: var(--white);
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            z-index: 1001;
+            width: 320px;
+            border: 2px solid var(--primary-green);
+            transition: all 0.3s ease;
+        }
+
+        .analytics-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .analytics-header h6 {
+            font-size: 16px;
+            color: var(--dark-green);
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .analytics-controls {
+            display: flex;
+            gap: 5px;
+        }
+
+        .analytics-minimize,
+        .analytics-close {
+            background: none;
+            border: none;
+            color: var(--dark-gray);
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            padding: 5px;
+            border-radius: 3px;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .analytics-minimize:hover {
+            background: var(--light-green);
+            color: var(--primary-green);
+        }
+
+        .analytics-close:hover {
+            background: #ffebee;
+            color: #d32f2f;
+        }
+
+        .analytics-card.minimized .analytics-content {
+            display: none;
+        }
+
+        .analytics-card.minimized {
+            width: auto;
+            min-width: 200px;
+        }
+
+        .analytics-content {
+            font-size: 14px;
+        }
+
+        .analytics-section {
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--medium-gray);
+        }
+
+        .analytics-title {
+            font-size: 13px;
+            color: var(--dark-green);
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+
+        .analytics-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--dark-gray);
+        }
+
+        .analytics-subtitle {
+            font-size: 11px;
+            color: var(--dark-gray);
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo-container">
+                <img src="/static/images/ferticore-logo-full.png" alt="FertiCore" class="logo-image">
+                <div class="logo-subtitle">Sistema de Visualização Agrícola</div>
+            </div>
+        </div>
+
+        <ul class="sidebar-menu">
+            <li>
+                <a href="#" class="active">
+                    <i class="fas fa-map"></i>
+                    Mapa Principal
+                </a>
+            </li>
+            <li>
+                <a href="/analysis">
+                    <i class="fas fa-chart-bar"></i>
+                    Análises
+                </a>
+            </li>
+            <li>
+                <a href="#" data-bs-toggle="modal" data-bs-target="#exportModal">
+                    <i class="fas fa-download"></i>
+                    Exportações
+                </a>
+            </li>
+            <li>
+                <a href="#">
+                    <i class="fas fa-cog"></i>
+                    Configurações
+                </a>
+            </li>
+        </ul>
+
+        <div class="layers-section">
+            <div class="layers-title">
+                <i class="fas fa-layer-group me-2"></i>
+                Camadas
+            </div>
+
+            <button class="btn btn-success w-100 mb-3" id="add-layer-btn">
+                <i class="fas fa-plus me-2"></i>
+                Adicionar Camada
+            </button>
+
+            <div id="active-layers">
+                <div class="layers-subtitle mb-2">Camadas Ativas</div>
+                <div id="layers-list" class="mb-3">
+                    <div class="text-muted text-center" style="font-size: 12px;">
+                        Nenhuma camada ativa
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toggle Sidebar Button -->
+    <button class="toggle-sidebar" id="toggle-sidebar">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- Main Content -->
+    <div class="main-content" id="main-content">
+        <div id="map"></div>
+
+        <!-- Container for Analytics Cards -->
+        <div id="analytics-cards-container"></div>
+    </div>
+
+    <!-- Modal para Adicionar Camada -->
+    <div class="modal fade" id="layerModal" tabindex="-1" aria-labelledby="layerModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header" style="background: var(--primary-green); color: white;">
+                    <h5 class="modal-title" id="layerModalLabel">
+                        <i class="fas fa-layer-group me-2"></i>
+                        Adicionar Nova Camada
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="form-group mb-3">
+                                <label class="form-label">
+                                    <i class="fas fa-layer-group me-1"></i>
+                                    Tipo de Camada
+                                </label>
+                                <select id="layer-type-selector" class="form-select">
+                                    <option value="">Selecione o tipo de camada...</option>
+                                    <option value="crop">Camada de Culturas</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Configurações específicas para Camada de Culturas -->
+                    <div id="crop-layer-config" style="display: none;">
+                        <hr>
+                        <h6 class="mb-3">
+                            <i class="fas fa-leaf me-2"></i>
+                            Configurações da Camada de Culturas
+                        </h6>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-tag me-1"></i>
+                                        Nome da Camada
+                                    </label>
+                                    <input type="text" id="layer-name" class="form-control" placeholder="Ex: Soja - São Paulo">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-leaf me-1"></i>
+                                        Cultura Agrícola
+                                    </label>
+                                    <select id="modal-crop-selector" class="form-select">
+                                        <option value="">Selecione uma cultura...</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-map-marked-alt me-1"></i>
+                                        Filtro por Estado
+                                    </label>
+                                    <select id="modal-state-selector" class="form-select">
+                                        <option value="">Todos os estados</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label class="form-label">
+                                        <i class="fas fa-palette me-1"></i>
+                                        Cor da Visualização
+                                    </label>
+                                    <select id="modal-color-selector" class="form-select">
+                                        <option value="#4CAF50">Verde</option>
+                                        <option value="#2196F3">Azul</option>
+                                        <option value="#FF9800">Laranja</option>
+                                        <option value="#9C27B0">Roxo</option>
+                                        <option value="#F44336">Vermelho</option>
+                                        <option value="#607D8B">Cinza Azulado</option>
+                                        <option value="#795548">Marrom</option>
+                                        <option value="#009688">Verde-azulado</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label class="form-label">
+                                <i class="fas fa-map-marker-alt me-1"></i>
+                                Filtro por Raio (opcional)
+                            </label>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <input type="number" id="modal-radius-km" class="form-control" placeholder="Raio (km)" min="1" max="500">
+                                </div>
+                                <div class="col-md-4">
+                                    <input type="number" id="modal-radius-lat" class="form-control" placeholder="Latitude" step="any">
+                                </div>
+                                <div class="col-md-4">
+                                    <input type="number" id="modal-radius-lng" class="form-control" placeholder="Longitude" step="any">
+                                </div>
+                            </div>
+                            <small class="text-muted">Deixe em branco para mostrar todos os municípios</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>
+                        Cancelar
+                    </button>
+                    <button type="button" class="btn btn-success" id="save-layer-btn">
+                        <i class="fas fa-save me-1"></i>
+                        Salvar Camada
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Exportação de Dados -->
+    <div class="modal fade" id="exportModal" tabindex="-1" aria-labelledby="exportModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header" style="background: var(--primary-green); color: white;">
+                    <h5 class="modal-title" id="exportModalLabel">
+                        <i class="fas fa-download me-2"></i>
+                        Exportar Dados
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Selecione a base de dados e o formato para exportar os dados:</p>
+                    <div class="form-group mb-3">
+                        <label class="form-label">
+                            <i class="fas fa-database me-1"></i>
+                            Base de Dados
+                        </label>
+                        <select id="export-database-selector" class="form-select">
+                            <option value="">Selecione uma base...</option>
+                            <option value="culturas">Culturas</option>
+                            <!-- Outras bases de dados podem ser adicionadas aqui -->
+                        </select>
+                    </div>
+                    <button class="btn btn-success w-100" id="download-complete-data" onclick="downloadCompleteData()">
+                        <i class="fas fa-download me-2"></i>
+                        Baixar Base Completa (.xlsx)
+                    </button>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>
+                        Fechar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Custom JS -->
+    <script src="/static/js/map.js"></script>
+
+    <script>
+        // Sistema de camadas
+        let activeLayers = [];
+        let layerIdCounter = 1;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize components
+            initializeMap();
+            loadCrops();
+            loadStates();
+
+            // Setup sidebar toggle
+            document.getElementById('toggle-sidebar').addEventListener('click', function() {
+                const sidebar = document.querySelector('.sidebar');
+                const mainContent = document.getElementById('main-content');
+                const toggleBtn = document.getElementById('toggle-sidebar');
+
+                sidebar.classList.toggle('hidden');
+                mainContent.classList.toggle('sidebar-hidden');
+                toggleBtn.classList.toggle('sidebar-hidden');
+
+                // Change icon
+                const icon = toggleBtn.querySelector('i');
+                if (sidebar.classList.contains('hidden')) {
+                    icon.className = 'fas fa-chevron-right';
+                } else {
+                    icon.className = 'fas fa-bars';
+                }
+
+                // Trigger map resize after sidebar animation
+                setTimeout(() => {
+                    if (window.map) {
+                        window.map.invalidateSize();
+                    }
+                }, 300);
+            });
+
+            // Setup layer system
+            document.getElementById('add-layer-btn').addEventListener('click', function() {
+                const modal = new bootstrap.Modal(document.getElementById('layerModal'));
+                modal.show();
+            });
+
+            // Setup layer type selector
+            document.getElementById('layer-type-selector').addEventListener('change', function() {
+                const cropConfig = document.getElementById('crop-layer-config');
+                if (this.value === 'crop') {
+                    cropConfig.style.display = 'block';
+                } else {
+                    cropConfig.style.display = 'none';
+                }
+            });
+
+            // Setup save layer button
+            document.getElementById('save-layer-btn').addEventListener('click', function() {
+                saveLayer();
+            });
+
+
+        });
+
+        async function loadCrops() {
+            try {
+                const response = await fetch('/api/crops');
+                const data = await response.json();
+
+                if (data.success) {
+                    const selector = document.getElementById('crop-selector');
+                    selector.innerHTML = '<option value="">Selecione uma cultura...</option>';
+
+                    data.crops.forEach(crop => {
+                        const option = document.createElement('option');
+                        option.value = crop;
+                        option.textContent = crop;
+                        selector.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Erro ao carregar culturas:', error);
+            }
+        }
+
+        async function loadStates() {
+            try {
+                const response = await fetch('/api/brazilian-states');
+                const data = await response.json();
+
+                if (data.success) {
+                    const selector = document.getElementById('state-selector');
+                    selector.innerHTML = '<option value="">Todos os estados</option>';
+
+                    data.states.forEach(state => {
+                        const option = document.createElement('option');
+                        option.value = state.code;
+                        option.textContent = `${state.name} (${state.code})`;
+                        selector.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Erro ao carregar estados:', error);
+            }
+        }
+
+        function filterByState(stateCode) {
+            if (window.filterByStateOnMap) {
+                window.filterByStateOnMap(stateCode);
+            }
+        }
+
+        async function downloadCompleteData() {
+            try {
+                // Check if database is selected
+                const selectedDatabase = document.getElementById('export-database-selector').value;
+                if (!selectedDatabase) {
+                    alert('Por favor, selecione uma base de dados para exportação.');
+                    return;
+                }
+
+                const button = document.getElementById('download-complete-data');
+                const originalText = button.innerHTML;
+
+                // Show loading state
+                button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Preparando download...';
+                button.disabled = true;
+
+                // Make request to download endpoint
+                const response = await fetch('/api/export/complete-data');
+
+                if (!response.ok) {
+                    throw new Error('Erro ao baixar dados');
+                }
+
+                // Get the blob and create download link
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = 'base_completa_culturas_ibge_2023.xlsx';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+
+                // Close modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('exportModal'));
+                modal.hide();
+
+                // Show success message
+                alert('Download iniciado com sucesso!');
+
+            } catch (error) {
+                console.error('Erro no download:', error);
+                alert('Erro ao baixar arquivo: ' + error.message);
+            } finally {
+                // Restore button
+                const button = document.getElementById('download-complete-data');
+                button.innerHTML = '<i class="fas fa-download me-2"></i>Baixar Base Completa (.xlsx)';
+                button.disabled = false;
+            }
+        }
+
+        function showAnalyticsCard(layerData) {
+            const container = document.getElementById('analytics-cards-container');
+            const layerName = layerData.name || 'Camada Desconhecida';
+            const layerId = layerData.id;
+
+            // Verificar se já existe um card para esta camada
+            let existingCard = document.getElementById(`analytics-card-${layerId}`);
+
+            if (existingCard) {
+                // Se já existe, apenas atualizar os dados
+                updateAnalyticsCard(existingCard, layerData);
+                return;
+            }
+
+            // Obter dados filtrados específicos da camada
+            const filteredCropData = getFilteredCropDataForLayer(layerData);
+
+            // Calcular estatísticas baseadas nos dados filtrados
+            const analytics = calculateLayerAnalytics(filteredCropData, layerData);
+
+            // Calcular posição do card
+            const existingCards = container.querySelectorAll('.analytics-card');
+            const position = calculateCardPosition(existingCards.length);
+
+            // Criar novo card
+            const card = document.createElement('div');
+            card.id = `analytics-card-${layerId}`;
+            card.className = 'analytics-card';
+            card.style.top = `${position.top}px`;
+            card.style.left = `${position.left}px`;
+            card.setAttribute('data-layer-id', layerId);
+
+            card.innerHTML = `
+                <div class="analytics-header">
+                    <h6><i class="fas fa-chart-line me-2"></i>Dados Analíticos</h6>
+                    <div class="analytics-controls">
+                        <button class="analytics-minimize" onclick="toggleAnalyticsCard(${layerId})" title="Minimizar/Maximizar">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                        <button class="analytics-close" onclick="hideAnalyticsCard(${layerId})" title="Fechar">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="analytics-content">
+                    <div class="analytics-section">
+                        <div class="analytics-title">Camada</div>
+                        <div class="analytics-value">${layerName}</div>
+                    </div>
+
+                    <div class="analytics-section">
+                        <div class="analytics-title">Total de Hectares</div>
+                        <div class="analytics-value">${analytics.totalHectares}</div>
+                    </div>
+
+                    <div class="analytics-section">
+                        <div class="analytics-title">Municípios com Dados</div>
+                        <div class="analytics-value">${analytics.municipalitiesCount}</div>
+                    </div>
+
+                    <div class="analytics-section                    
+                        <div class="analytics-title">Maior Produção</div>
+                        <div class="analytics-value">${analytics.topMunicipality.name}</div>
+                        <div class="analytics-subtitle">${analytics.topMunicipality.value}</div>
+                    </div>
+
+                    <div class="analytics-section">
+                        <div class="analytics-title">Área Média</div>
+                        <div class="analytics-value">${analytics.averageArea}</div>
+                    </div>
+
+                    <div class="analytics-section">
+                        <div class="analytics-title">Estado/Região</div>
+                        <div class="analytics-value">${analytics.region.name}</div>
+                        <div class="analytics-subtitle">${analytics.region.details}</div>
+                    </div>
+                </div>
+            `;
+
+            container.appendChild(card);
+        }
+
+        function hideAnalyticsCard(layerId) {
+            const card = document.getElementById(`analytics-card-${layerId}`);
+            if (card) {
+                card.remove();
+                repositionAnalyticsCards();
+            }
+        }
+
+        function hideAllAnalyticsCards() {
+            const container = document.getElementById('analytics-cards-container');
+            container.innerHTML = '';
+        }
+
+        function toggleAnalyticsCard(layerId) {
+            const card = document.getElementById(`analytics-card-${layerId}`);
+            if (!card) return;
+
+            const content = card.querySelector('.analytics-content');
+            const minimizeBtn = card.querySelector('.analytics-minimize i');
+
+            card.classList.toggle('minimized');
+
+            if (card.classList.contains('minimized')) {
+                minimizeBtn.className = 'fas fa-plus';
+            } else {
+                minimizeBtn.className = 'fas fa-minus';
+            }
+        }
+
+        function calculateCardPosition(cardIndex) {
+            const baseTop = 20;
+            const baseLeft = 20;
+            const cardHeight = 380; // Altura aproximada do card
+            const cardWidth = 340;
+            const margin = 20;
+
+            // Organizar cards em colunas
+            const cardsPerColumn = Math.floor((window.innerHeight - 100) / (cardHeight + margin));
+            const column = Math.floor(cardIndex / cardsPerColumn);
+            const row = cardIndex % cardsPerColumn;
+
+            return {
+                top: baseTop + (row * (cardHeight + margin)),
+                left: baseLeft + (column * (cardWidth + margin))
+            };
+        }
+
+        function repositionAnalyticsCards() {
+            const container = document.getElementById('analytics-cards-container');
+            const cards = container.querySelectorAll('.analytics-card');
+
+            cards.forEach((card, index) => {
+                const position = calculateCardPosition(index);
+                card.style.top = `${position.top}px`;
+                card.style.left = `${position.left}px`;
+            });
+        }
+
+        function updateAnalyticsCard(card, layerData) {
+            const filteredCropData = getFilteredCropDataForLayer(layerData);
+            const analytics = calculateLayerAnalytics(filteredCropData, layerData);
+            const layerName = layerData.name || 'Camada Desconhecida';
+
+            // Atualizar conteúdo do card existente
+            const sections = card.querySelectorAll('.analytics-section');
+            sections[0].querySelector('.analytics-value').textContent = layerName;
+            sections[1].querySelector('.analytics-value').textContent = analytics.totalHectares;
+            sections[2].querySelector('.analytics-value').textContent = analytics.municipalitiesCount;
+            sections[3].querySelector('.analytics-value').textContent = analytics.topMunicipality.name;
+            sections[3].querySelector('.analytics-subtitle').textContent = analytics.topMunicipality.value;
+            sections[4].querySelector('.analytics-value').textContent = analytics.averageArea;
+            sections[5].querySelector('.analytics-value').textContent = analytics.region.name;
+            sections[5].querySelector('.analytics-subtitle').textContent = analytics.region.details;
+        }
+
+        function getFilteredCropDataForLayer(layerData) {
+            const allCropData = layerData.cropData || {};
+            const filteredData = {};
+
+            // Se não há mapLayer, retornar todos os dados
+            if (!layerData.mapLayer) {
+                return allCropData;
+            }
+
+            // Obter features visíveis na camada
+            layerData.mapLayer.eachLayer(function(featureLayer) {
+                if (featureLayer.feature && featureLayer.feature.properties) {
+                    const municipalityCode = featureLayer.feature.properties.GEOCODIGO || 
+                                           featureLayer.feature.properties.CD_MUN || 
+                                           featureLayer.feature.properties.cd_geocmu || 
+                                           featureLayer.feature.properties.geocodigo ||
+                                           featureLayer.feature.properties.CD_GEOCMU;
+
+                    if (municipalityCode && allCropData[municipalityCode]) {
+                        filteredData[municipalityCode] = allCropData[municipalityCode];
+                    }
+                }
+            });
+
+            return filteredData;
+        }
+
+        function calculateLayerAnalytics(cropData, layerData) {
+            const municipalities = Object.values(cropData);
+            const validMunicipalities = municipalities.filter(m => m.harvested_area && m.harvested_area > 0);
+
+            if (validMunicipalities.length === 0) {
+                return {
+                    totalHectares: '0 ha',
+                    municipalitiesCount: '0',
+                    topMunicipality: { name: 'Sem dados', value: '-' },
+                    averageArea: '0 ha',
+                    region: { name: 'Sem dados', details: '-' }
+                };
+            }
+
+            // Total de hectares
+            const totalHectares = validMunicipalities.reduce((sum, m) => sum + m.harvested_area, 0);
+
+            // Município com maior produção
+            const topMunicipality = validMunicipalities.reduce((max, m) => 
+                m.harvested_area > max.harvested_area ? m : max
+            );
+
+            // Área média
+            const averageArea = totalHectares / validMunicipalities.length;
+
+            // Agrupar por estado
+            const stateData = {};
+            validMunicipalities.forEach(m => {
+                const state = m.state_code || 'N/A';
+                if (!stateData[state]) {
+                    stateData[state] = { total: 0, count: 0 };
+                }
+                stateData[state].total += m.harvested_area;
+                stateData[state].count += 1;
+            });
+
+            // Informações da região baseadas na camada
+            let regionInfo = { name: 'Brasil', details: 'Todos os estados' };
+
+            if (layerData.state) {
+                regionInfo = {
+                    name: layerData.state,
+                    details: `${validMunicipalities.length} municípios`
+                };
+            } else if (layerData.radius) {
+                regionInfo = {
+                    name: `Raio ${layerData.radius.km}km`,
+                    details: `Centro: ${layerData.radius.lat.toFixed(2)}, ${layerData.radius.lng.toFixed(2)}`
+                };
+            } else {
+                const states = Object.keys(stateData);
+                if (states.length === 1) {
+                    regionInfo = {
+                        name: states[0],
+                        details: `${validMunicipalities.length} municípios`
+                    };
+                } else if (states.length <= 3) {
+                    regionInfo = {
+                        name: states.join(', '),
+                        details: `${states.length} estados`
+                    };
+                }
+            }
+
+            return {
+                totalHectares: formatNumber(totalHectares) + ' ha',
+                municipalitiesCount: validMunicipalities.length.toLocaleString('pt-BR'),
+                topMunicipality: {
+                    name: topMunicipality.municipality_name || 'Desconhecido',
+                    value: formatNumber(topMunicipality.harvested_area) + ' ha'
+                },
+                averageArea: formatNumber(averageArea) + ' ha',
+                region: regionInfo
+            };
+        }
+
+        function formatNumber(num) {
+            if (num >= 1000000) {
+                return (num / 1000000).toLocaleString('pt-BR', {maximumFractionDigits: 1}) + 'M';
+            } else if (num >= 1000) {
+                return (num / 1000).toLocaleString('pt-BR', {maximumFractionDigits: 1}) + 'K';
+            } else {
+                return num.toLocaleString('pt-BR', {maximumFractionDigits: 0});
+            }
+        }
+
+
+        function saveLayer() {
+            const layerType = document.getElementById('layer-type-selector').value;
+            const editingLayerId = document.getElementById('layerModal').getAttribute('data-editing-layer-id');
+
+            if (layerType === 'crop') {
+                const layerName = document.getElementById('layer-name').value;
+                const crop = document.getElementById('modal-crop-selector').value;
+                const state = document.getElementById('modal-state-selector').value;
+                const color = document.getElementById('modal-color-selector').value;
+                const radiusKm = document.getElementById('modal-radius-km').value;
+                const radiusLat = document.getElementById('modal-radius-lat').value;
+                const radiusLng = document.getElementById('modal-radius-lng').value;
+
+                if (!layerName || !crop) {
+                    alert('Por favor, preencha o nome da camada e selecione uma cultura.');
+                    return;
+                }
+
+                const layerData = {
+                    type: 'crop',
+                    name: layerName,
+                    crop: crop,
+                    state: state,
+                    color: color,
+                    radius: radiusKm ? {
+                        km: parseInt(radiusKm),
+                        lat: parseFloat(radiusLat),
+                        lng: parseFloat(radiusLng)
+                    } : null
+                };
+
+                if (editingLayerId) {
+                    // Editing existing layer
+                    const layerIndex = activeLayers.findIndex(l => l.id == editingLayerId);
+                    if (layerIndex !== -1) {
+                        const existingLayer = activeLayers[layerIndex];
+
+                        // Remove old map layer
+                        if (existingLayer.mapLayer) {
+                            map.removeLayer(existingLayer.mapLayer);
+                        }
+
+                        // Update layer data
+                        activeLayers[layerIndex] = {
+                            ...existingLayer,
+                            ...layerData
+                        };
+
+                        applyLayer(activeLayers[layerIndex]);
+                    }
+                } else {
+                    // Creating new layer
+                    const layer = {
+                        id: layerIdCounter++,
+                        ...layerData
+                    };
+
+                    activeLayers.push(layer);
+                    applyLayer(layer);
+                }
+
+                updateLayersList();
+
+                // Close modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('layerModal'));
+                modal.hide();
+
+                // Reset form
+                resetLayerForm();
+            }
+        }
+
+        function updateLayersList() {
+            const layersList = document.getElementById('layers-list');
+
+            if (activeLayers.length === 0) {
+                layersList.innerHTML = '<div class="text-muted text-center" style="font-size: 12px;">Nenhuma camada ativa</div>';
+                updateStatistics();
+                return;
+            }
+
+            layersList.innerHTML = activeLayers.map(layer => {
+                const isVisible = layer.visible !== false;
+                const eyeIcon = isVisible ? 'fa-eye' : 'fa-eye-slash';
+                const eyeColor = isVisible ? 'btn-outline-primary' : 'btn-outline-secondary';
+
+                return `
+                <div class="layer-item" data-layer-id="${layer.id}" style="opacity: ${isVisible ? '1' : '0.6'};">
+                    <div class="layer-item-header">
+                        <div>
+                            <div class="layer-item-name">${layer.name}</div>
+                            <div class="layer-item-type">
+                                ${layer.type === 'crop' ? 'Cultura' : layer.type}
+                                ${layer.state ? ` - ${layer.state}` : ''}
+                                ${layer.radius ? ` - Raio ${layer.radius.km}` : ''}
+                            </div>
+                        </div>
+                        <div class="layer-controls">
+                            <button class="btn btn-outline-info btn-sm" onclick="editLayer(${layer.id})" title="Editar camada">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-outline-danger btn-sm" onclick="removeLayer(${layer.id})" title="Remover camada">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                            <button class="btn ${eyeColor} btn-sm" onclick="toggleLayerVisibility(${layer.id})" title="Alternar visibilidade">
+                                <i class="fas ${eyeIcon}"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; margin-top: 5px;">
+                        <div style="width: 20px; height: 12px; background-color: ${layer.color}; border-radius: 3px; margin-right: 8px; border: 1px solid #ccc;"></div>
+                        <span style="font-size: 11px; color: #666;">${layer.crop}</span>
+                    </div>
+                </div>
+            `;
+            }).join('');
+
+            updateStatistics();
+        }
+
+        function applyLayer(layer) {
+            if (layer.type === 'crop') {
+                // Load the crop layer with layer-specific configuration
+                loadCropLayerForLayer(layer);
+            }
+        }
+
+        function editLayer(layerId) {
+            const layer = activeLayers.find(l => l.id === layerId);
+            if (!layer) return;
+
+            // Populate modal with layer data
+            document.getElementById('layer-type-selector').value = layer.type;
+            document.getElementById('crop-layer-config').style.display = 'block';
+            document.getElementById('layer-name').value = layer.name;
+            document.getElementById('modal-crop-selector').value = layer.crop;
+            document.getElementById('modal-state-selector').value = layer.state || '';
+            document.getElementById('modal-color-selector').value = layer.color;
+
+            if (layer.radius) {
+                document.getElementById('modal-radius-km').value = layer.radius.km;
+                document.getElementById('modal-radius-lat').value = layer.radius.lat;
+                document.getElementById('modal-radius-lng').value = layer.radius.lng;
+            }
+
+            // Store editing layer ID
+            document.getElementById('layerModal').setAttribute('data-editing-layer-id', layerId);
+
+            // Show modal
+            const modal = new bootstrap.Modal(document.getElementById('layerModal'));
+            modal.show();
+        }
+
+        function removeLayer(layerId) {
+            if (confirm('Tem certeza que deseja remover esta camada?')) {
+                const layer = activeLayers.find(l => l.id === layerId);
+
+                // Remove the layer from map if it exists
+                if (layer && layer.mapLayer) {
+                    map.removeLayer(layer.mapLayer);
+                }
+
+                // Remove analytics card for this layer
+                hideAnalyticsCard(layerId);
+
+                activeLayers = activeLayers.filter(layer => layer.id !== layerId);
+                updateLayersList();
+
+                // Update legend to show only visible layers
+                updateCombinedLegend();
+            }
+        }
+
+        function updateStatistics() {
+            const visibleLayers = activeLayers.filter(layer => layer.visible !== false);
+            const uniqueCrops = new Set(activeLayers.map(layer => layer.crop));
+
+            // Calculate total municipalities with data and total hectares
+            let totalMunicipalities = 0;
+            let totalHectares = 0;
+
+            visibleLayers.forEach(layer => {
+                if (layer.cropData) {
+                    const layerMunicipalities = Object.keys(layer.cropData).length;
+                    totalMunicipalities += layerMunicipalities;
+
+                    Object.values(layer.cropData).forEach(data => {
+                        if (data.harvested_area) {
+                            totalHectares += data.harvested_area;
+                        }
+                    });
+                }
+            });
+
+            document.getElementById('active-layers-count').textContent = activeLayers.length;
+            document.getElementById('active-crops-count').textContent = uniqueCrops.size;
+            document.getElementById('municipalities-with-data').textContent = totalMunicipalities.toLocaleString('pt-BR');
+
+            // Format hectares
+            if (totalHectares >= 1000000) {
+                document.getElementById('total-hectares').textContent = (totalHectares / 1000000).toLocaleString('pt-BR', {maximumFractionDigits: 1}) + 'M';
+            } else if (totalHectares >= 1000) {
+                document.getElementById('total-hectares').textContent = (totalHectares / 1000).toLocaleString('pt-BR', {maximumFractionDigits: 1}) + 'K';
+            } else {
+                document.getElementById('total-hectares').textContent = totalHectares.toLocaleString('pt-BR');
+            }
+        }
+
+        function toggleLayerVisibility(layerId) {
+            const layer = activeLayers.find(l => l.id === layerId);
+            if (layer) {
+                layer.visible = layer.visible !== false ? false : true;
+
+                if (layer.mapLayer) {
+                    if (layer.visible) {
+                        map.addLayer(layer.mapLayer);
+                        // Mostrar card analítico quando camada fica visível
+                        showAnalyticsCard(layer);
+                    } else {
+                        map.removeLayer(layer.mapLayer);
+                        // Esconder card analítico quando camada fica invisível
+                        hideAnalyticsCard(layerId);
+                    }
+                }
+
+                updateLayersList();
+                updateCombinedLegend();
+            }
+        }
+
+        function resetLayerForm() {
+            document.getElementById('layer-type-selector').value = '';
+            document.getElementById('layer-name').value = '';
+            document.getElementById('modal-crop-selector').value = '';
+            document.getElementById('modal-state-selector').value = '';
+            document.getElementById('modal-color-selector').value = '#4CAF50';
+            document.getElementById('modal-radius-km').value = '';
+            document.getElementById('modal-radius-lat').value = '';
+            document.getElementById('modal-radius-lng').value = '';
+            document.getElementById('crop-layer-config').style.display = 'none';
+            document.getElementById('layerModal').removeAttribute('data-editing-layer-id');
+        }
+
+        async function loadCropLayerForLayer(layer) {
+            try {
+                console.log(`Loading crop layer for layer: ${layer.name}`);
+
+                const response = await fetch(`/api/crop-data/${encodeURIComponent(layer.crop)}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    const cropData = data.data;
+
+                    // Calculate min/max for this specific crop
+                    const values = Object.values(cropData)
+                        .map(item => item.harvested_area)
+                        .filter(value => value > 0);
+
+                    let minMax = { min: 0, max: 1000 };
+                    if (values.length > 0) {
+                        minMax.min = Math.min(...values);
+                        minMax.max = Math.max(...values);
+                    }
+
+                    await loadMunicipalityBoundariesForLayer(layer, cropData, minMax);
+
+                    // Show analytics card
+                    showAnalyticsCard(layer);
+                } else {
+                    console.error('Error loading crop data:', data.error);
+                    alert('Erro ao carregar dados da cultura: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Network error:', error);
+                alert('Erro de conexão ao carregar dados da cultura');
+            }
+        }
+
+        async function loadMunicipalityBoundariesForLayer(layer, cropData, minMax) {
+            const geoJsonFiles = [
+                '/static/data/brazil_municipalities_all.geojson',
+                '/attached_assets/brazil_municipalities_all_1752980285489.geojson',
+                '/static/data/brazil_municipalities_combined.geojson',
+                '/static/data/br_municipalities_simplified.geojson'
+            ];
+
+            for (const filePath of geoJsonFiles) {
+                try {
+                    console.log(`Tentando carregar: ${filePath}`);
+                    const response = await fetch(filePath);
+                    if (response.ok) {
+                        const geoData = await response.json();
+                        console.log(`GeoJSON carregado com sucesso: ${filePath}, ${geoData.features.length} municípios`);
+
+                        // Apply state filter if one is selected
+                        const filteredData = applyStateFilterForLayer(geoData, layer.state);
+
+                        const mapLayer = L.geoJSON(filteredData, {
+                            style: function(feature) {
+                                return getFeatureStyleForLayer(feature, layer, cropData, minMax);
+                            },
+                            onEachFeature: function(feature, mapFeature) {
+                                setupFeaturePopupForLayer(feature, mapFeature, layer, cropData);
+                            }
+                        });
+
+                        // Apply radius filter if specified
+                        if (layer.radius) {
+                            // Filter by radius logic would go here
+                        }
+
+                        // Store layer reference
+                        layer.mapLayer = mapLayer;
+                        layer.cropData = cropData;
+                        layer.minMax = minMax;
+
+                        // Add to map if visible
+                        if (layer.visible !== false) {
+                            mapLayer.addTo(map);
+                        }
+
+                        // Update combined legend
+                        updateCombinedLegend();
+                        break;
+                    }
+                } catch (error) {
+                    console.log(`Erro ao carregar ${filePath}:`, error);
+                    continue;
+                }
+            }
+        }
+
+        function applyStateFilterForLayer(geoData, stateFilter) {
+            if (!stateFilter) {
+                return geoData;
+            }
+
+            const filteredFeatures = geoData.features.filter(feature => {
+                const stateUF = feature.properties.UF || feature.properties.SIGLA_UF || feature.properties.uf;
+                return stateUF === stateFilter;
+            });
+
+            return {
+                type: "FeatureCollection",
+                features: filteredFeatures
+            };
+        }
+
+        function getFeatureStyleForLayer(feature, layer, cropData, minMax) {
+            const municipalityCode = feature.properties.GEOCODIGO || 
+                                   feature.properties.CD_MUN || 
+                                   feature.properties.cd_geocmu || 
+                                   feature.properties.geocodigo ||
+                                   feature.properties.CD_GEOCMU;
+
+            const cropInfo = cropData[municipalityCode];
+
+            if (!cropInfo || !cropInfo.harvested_area || cropInfo.harvested_area === 0) {
+                // Municípios sem dados - cor cinza claro
+                return {
+                    fillColor: '#E8E8E8',
+                    weight: 0.3,
+                    opacity: 0.8,
+                    color: '#CCCCCC',
+                    fillOpacity: 0.6
+                };
+            }
+
+            const area = cropInfo.harvested_area;
+            const color = getColorForValueWithColor(area, minMax.min, minMax.max, layer.color);
+
+            return {
+                fillColor: color,
+                weight: 0.3,
+                opacity: 0.8,
+                color: '#666666',
+                fillOpacity: 0.7
+            };
+        }
+
+        function setupFeaturePopupForLayer(feature, mapFeature, layer, cropData) {
+            const municipalityCode = feature.properties.GEOCODIGO || feature.properties.CD_MUN || feature.properties.cd_geocmu || feature.properties.geocodigo;
+            const municipalityName = feature.properties.NOME || feature.properties.NM_MUN || feature.properties.nm_mun || feature.properties.nome || 'Nome não disponível';
+            const stateUF = feature.properties.UF || feature.properties.SIGLA_UF || feature.properties.uf;
+            const cropInfo = cropData[municipalityCode];
+
+            let popupContent = `<strong>${municipalityName}</strong>`;
+            if (stateUF) {
+                popupContent += ` (${stateUF})`;
+            }
+            popupContent += `<br>`;
+
+            if (cropInfo && cropInfo.harvested_area) {
+                popupContent += `
+                    Camada: ${layer.name}<br>
+                    Cultura: ${layer.crop}<br>
+                    Área Colhida: ${cropInfo.harvested_area.toLocaleString('pt-BR')} hectares<br>
+                    Código: ${municipalityCode}
+                `;
+            } else {
+                popupContent += `
+                    Camada: ${layer.name}<br>
+                    Cultura: ${layer.crop}<br>
+                    <em>Dados não disponíveis</em><br>
+                    Código: ${municipalityCode || 'N/A'}
+                `;
+            }
+
+            mapFeature.bindPopup(popupContent);
+        }
+
+        function getColorForValueWithColor(value, min, max, baseColor) {
+            // Se valor é 0 ou negativo, mas queremos cor de 1ha, usar 1
+            if (value <= 0) value = 1;
+
+            // Ajustar os valores mínimo e máximo para melhor distribuição
+            const adjustedMin = Math.max(min, 1);
+            const adjustedMax = Math.max(max, adjustedMin * 10);
+
+            // Use escala logarítmica para melhor distribuição
+            const logMin = Math.log(adjustedMin);
+            const logMax = Math.log(adjustedMax);
+            const logValue = Math.log(Math.max(value, adjustedMin));
+            const normalized = (logValue - logMin) / (logMax - logMin);
+
+            // Gerar cor sequencial baseada na cor selecionada
+            return generateSequentialColorWithBase(normalized, baseColor);
+        }
+
+        function generateSequentialColorWithBase(normalized, baseColor) {
+            // Converter hex para RGB
+            const hexToRgb = (hex) => {
+                const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+                return result ? {
+                    r: parseInt(result[1], 16),
+                    g: parseInt(result[2], 16),
+                    b: parseInt(result[3], 16)
+                } : null;
+            };
+
+            // Converter RGB para HSL
+            const rgbToHsl = (r, g, b) => {
+                r /= 255; g /= 255; b /= 255;
+                const max = Math.max(r, g, b), min = Math.min(r, g, b);
+                let h, s, l = (max + min) / 2;
+
+                if (max === min) {
+                    h = s = 0;
+                } else {
+                    const d = max - min;
+                    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                    switch (max) {
+                        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                        case g: h = (b - r) / d + 2; break;
+                        case b: h = (r - g) / d + 4; break;
+                    }
+                    h /= 6;
+                }
+                return { h: h * 360, s: s * 100, l: l * 100 };
+            };
+
+            // Converter HSL para RGB
+            const hslToRgb = (h, s, l) => {
+                h /= 360; s /= 100; l /= 100;
+                const hue2rgb = (p, q, t) => {
+                    if (t < 0) t += 1;
+                    if (t > 1) t -= 1;
+                    if (t < 1/6) return p + (q - p) * 6 * t;
+                    if (t < 1/2) return q;
+                    if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+                    return p;
+                };
+
+                let r, g, b;
+                if (s === 0) {
+                    r = g = b = l;
+                } else {
+                    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+                    const p = 2 * l - q;
+                    r = hue2rgb(p, q, h + 1/3);
+                    g = hue2rgb(p, q, h);
+                    b = hue2rgb(p, q, h - 1/3);
+                }
+                return {
+                    r: Math.round(r * 255),
+                    g: Math.round(g * 255),
+                    b: Math.round(b * 255)
+                };
+            };
+
+            const baseRgb = hexToRgb(baseColor);
+            if (!baseRgb) return baseColor;
+
+            const baseHsl = rgbToHsl(baseRgb.r, baseRgb.g, baseRgb.b);
+
+            // Criar escala sequencial: valores maiores = cores mais escuras
+            // Luminosidade varia de 85% (claro) para 15% (escuro)
+            const lightness = 85 - (normalized * 70);
+
+            // Manter matiz, ajustar levemente a saturação
+            const saturation = Math.max(20, baseHsl.s - (normalized * 10));
+
+            const newRgb = hslToRgb(baseHsl.h, saturation, lightness);
+            return `#${((1 << 24) + (newRgb.r << 16) + (newRgb.g << 8) + newRgb.b).toString(16).slice(1)}`;
+        }
+
+        function updateCombinedLegend() {
+            // Remove existing legend
+            if (currentLegendControl) {
+                map.removeControl(currentLegendControl);
+                currentLegendControl = null;
+            }
+
+            const visibleLayers = activeLayers.filter(layer => layer.visible !== false && layer.mapLayer);
+
+            if (visibleLayers.length === 0) return;
+
+            currentLegendControl = L.control({ position: 'bottomright' });
+            currentLegendControl.onAdd = function(map) {
+                const div = L.DomUtil.create('div', 'map-legend');
+
+                let legendHTML = `<h6><i class="fas fa-layer-group"></i> Camadas Ativas</h6>`;
+
+                visibleLayers.forEach(layer => {
+                    const { min, max } = layer.minMax;
+                    const adjustedMin = Math.max(min, 1);
+                    const adjustedMax = Math.max(max, adjustedMin * 10);
+
+                    legendHTML += `<div style="margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #eee;">`;
+                    legendHTML += `<div style="font-size: 12px; font-weight: 600; margin-bottom: 5px;">${layer.name}</div>`;
+                    legendHTML += `<div style="font-size: 10px; margin-bottom: 5px;">Hectares Colhidos</div>`;
+
+                    // Create color scale
+                    const steps = 4;
+                    for (let i = 0; i < steps; i++) {
+                        let value;
+                        if (i === 0) {
+                            value = adjustedMin;
+                        } else if (i === steps - 1) {
+                            value = adjustedMax;
+                        } else {
+                            const logMin = Math.log(adjustedMin);
+                            const logMax = Math.log(adjustedMax);
+                            const logValue = logMin + (logMax - logMin) * (i / (steps - 1));
+                            value = Math.exp(logValue);
+                        }
+
+                        const color = getColorForValueWithColor(value, adjustedMin, adjustedMax, layer.color);
+                        const displayValue = value < 1000 ? 
+                            value.toLocaleString('pt-BR', {maximumFractionDigits: 0}) :
+                            (value / 1000).toLocaleString('pt-BR', {maximumFractionDigits: 1}) + 'k';
+
+                        legendHTML += `
+                            <div class="legend-item">
+                                <div class="legend-color" style="background-color: ${color}; width: 15px; height: 15px; display: inline-block; margin-right: 5px; border: 1px solid #ccc;"></div>
+                                <span style="font-size: 9px;">${displayValue} ha</span>
+                            </div>
+                        `;
+                    }
+                    legendHTML += `</div>`;
+                });
+
+                legendHTML += `
+                    <div class="legend-item mt-2" style="font-size: 10px; color: #666;">
+                        <div class="legend-color" style="background-color: #E8E8E8; width: 15px; height: 15px; display: inline-block; margin-right: 5px; border: 1px solid #ccc;"></div>
+                        <span style="font-size: 9px;">Sem dados</span>
+                    </div>
+                `;
+
+                div.innerHTML = legendHTML;
+                return div;
+            };
+            currentLegendControl.addTo(map);
+        }
+
+        // Load crops and states for modal
+        async function loadCrops() {
+            try {
+                const response = await fetch('/api/crops');
+                const data = await response.json();
+
+                if (data.success) {
+                    const modalSelector = document.getElementById('modal-crop-selector');
+                    modalSelector.innerHTML = '<option value="">Selecione uma cultura...</option>';
+
+                    data.crops.forEach(crop => {
+                        const option = document.createElement('option');
+                        option.value = crop;
+                        option.textContent = crop;
+                        modalSelector.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Erro ao carregar culturas:', error);
+            }
+        }
+
+        async function loadStates() {
+            try {
+                const response = await fetch('/api/brazilian-states');
+                const data = await response.json();
+
+                if (data.success) {
+                    const modalSelector = document.getElementById('modal-state-selector');
+modalSelector.innerHTML = '<option value="">Todos os estados</option>';
+
+                    data.states.forEach(state => {
+                        const option = document.createElement('option');
+                        option.value = state.code;
+                        option.textContent = `${state.name} (${state.code})`;
+                        modalSelector.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Erro ao carregar estados:', error);
+            }
+        }
+
+        function filterByState(stateCode) {
+            if (window.filterByStateOnMap) {
+                window.filterByStateOnMap(stateCode);
+            }
+        }
+
+        async function downloadCompleteData() {
+            try {
+                // Check if database is selected
+                const selectedDatabase = document.getElementById('export-database-selector').value;
+                if (!selectedDatabase) {
+                    alert('Por favor, selecione uma base de dados para exportação.');
+                    return;
+                }
+
+                const button = document.getElementById('download-complete-data');
+                const originalText = button.innerHTML;
+
+                // Show loading state
+                button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Preparando download...';
+                button.disabled = true;
+
+                // Make request to download endpoint
+                const response = await fetch('/api/export/complete-data');
+
+                if (!response.ok) {
+                    throw new Error('Erro ao baixar dados');
+                }
+
+                // Get the blob and create download link
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = 'base_completa_culturas_ibge_2023.xlsx';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+
+                // Close modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('exportModal'));
+                modal.hide();
+
+                // Show success message
+                alert('Download iniciado com sucesso!');
+
+            } catch (error) {
+                console.error('Erro no download:', error);
+                alert('Erro ao baixar arquivo: ' + error.message);
+            } finally {
+                // Restore button
+                const button = document.getElementById('download-complete-data');
+                button.innerHTML = '<i class="fas fa-download me-2"></i>Baixar Base Completa (.xlsx)';
+                button.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>

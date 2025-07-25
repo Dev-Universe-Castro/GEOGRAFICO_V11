@@ -1,0 +1,9 @@
+git init
+git lfs install
+git lfs track "*.json"
+git lfs track "*.geojson"
+git add .
+git commit -m "Commit inicial com configuração LFS e arquivos do projeto"
+git branch -M main
+git remote set-url origin https://github.com/Dev-Universe-Castro/GEOGRAFICO_V09.git
+git push -f -u origin main
